@@ -15,7 +15,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST crear laptop (solo admin)
+// POST subir imagen ← DEBE IR ANTES DE /:id
+router.post('/upload', verifyToken, upload.single('image'), async (req, res) => {
+  try {
+    const imageUrl = req.file.path;
+    res.json({ url: imageUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST crear laptop
 router.post('/', verifyToken, async (req, res) => {
   const { name, brand, price, ram, ssd, stock, offer, image_url, description } = req.body;
   try {
@@ -54,13 +64,5 @@ router.delete('/:id', verifyToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-// POST subir imagen
-router.post('/upload',verifyToken, upload.single('image'), async (req, res) => {
-  try {
-    const imageUrl = req.file.path;
-    res.json({ url: imageUrl });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
 export default router;
