@@ -65,4 +65,31 @@ router.delete('/:id', verifyToken, async (req, res) => {
   }
 });
 
+// GET una laptop por ID con sus reseñas
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const laptop = await pool.query('SELECT * FROM laptops WHERE id=$1', [id]);
+    if (laptop.rows.length === 0) return res.status(404).json({ error: 'Laptop no encontrada' });
+    const reviews = await pool.query('SELECT * FROM reviews WHERE laptop_id=$1 ORDER BY created_at DESC', [id]);
+    res.json({ ...laptop.rows[0], reviews: reviews.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST agregar reseña
+router.post('/:id/reviews', async (req, res) => {
+  const { id } = req.params;
+  const { author, rating, comment } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO reviews (laptop_id, author, rating, comment) VALUES ($1,$2,$3,$4) RETURNING *',
+      [id, author, rating, comment]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 export default router;
