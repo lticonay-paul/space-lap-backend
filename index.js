@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import laptopsRouter from './routes/laptops.js';
 import authRouter from './routes/auth.js';
+import categoriesRouter from './routes/categories.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 
 app.use('/api/laptops', laptopsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/categories', categoriesRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Space Lap API funcionando' }));
 

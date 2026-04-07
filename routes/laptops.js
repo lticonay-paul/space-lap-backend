@@ -8,14 +8,19 @@ const router = express.Router();
 // GET todas las laptops
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM laptops ORDER BY id');
+    const result = await pool.query(`
+      SELECT l.*, c.name as category_name, c.slug as category_slug
+      FROM laptops l
+      LEFT JOIN categories c ON l.category_id = c.id
+      ORDER BY l.id
+    `);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST subir imagen ← DEBE IR ANTES DE /:id
+// POST subir imagen — DEBE IR ANTES DE /:id
 router.post('/upload', verifyToken, upload.single('image'), async (req, res) => {
   try {
     const imageUrl = req.file.path;
@@ -27,11 +32,11 @@ router.post('/upload', verifyToken, upload.single('image'), async (req, res) => 
 
 // POST crear laptop
 router.post('/', verifyToken, async (req, res) => {
-  const { name, brand, price, ram, ssd, stock, offer, image_url, description } = req.body;
+  const { name, brand, price, ram, ssd, stock, offer, image_url, description, specs, category_id } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO laptops (name, brand, price, ram, ssd, stock, offer, image_url, description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-      [name, brand, price, ram, ssd, stock, offer, image_url, description]
+      'INSERT INTO laptops (name, brand, price, ram, ssd, stock, offer, image_url, description, specs, category_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
+      [name, brand, price, ram, ssd, stock, offer, image_url, description, JSON.stringify(specs || {}), category_id || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -42,11 +47,11 @@ router.post('/', verifyToken, async (req, res) => {
 // PUT editar laptop
 router.put('/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
-  const { name, brand, price, ram, ssd, stock, offer, image_url, description } = req.body;
+  const { name, brand, price, ram, ssd, stock, offer, image_url, description, specs, category_id } = req.body;
   try {
     const result = await pool.query(
-      'UPDATE laptops SET name=$1, brand=$2, price=$3, ram=$4, ssd=$5, stock=$6, offer=$7, image_url=$8, description=$9 WHERE id=$10 RETURNING *',
-      [name, brand, price, ram, ssd, stock, offer, image_url, description, id]
+      'UPDATE laptops SET name=$1, brand=$2, price=$3, ram=$4, ssd=$5, stock=$6, offer=$7, image_url=$8, description=$9, specs=$10, category_id=$11 WHERE id=$12 RETURNING *',
+      [name, brand, price, ram, ssd, stock, offer, image_url, description, JSON.stringify(specs || {}), category_id || null, id]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -69,7 +74,12 @@ router.delete('/:id', verifyToken, async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const laptop = await pool.query('SELECT * FROM laptops WHERE id=$1', [id]);
+    const laptop = await pool.query(`
+      SELECT l.*, c.name as category_name, c.slug as category_slug
+      FROM laptops l
+      LEFT JOIN categories c ON l.category_id = c.id
+      WHERE l.id=$1
+    `, [id]);
     if (laptop.rows.length === 0) return res.status(404).json({ error: 'Laptop no encontrada' });
     const reviews = await pool.query('SELECT * FROM reviews WHERE laptop_id=$1 ORDER BY created_at DESC', [id]);
     res.json({ ...laptop.rows[0], reviews: reviews.rows });
@@ -92,4 +102,5 @@ router.post('/:id/reviews', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 export default router;
